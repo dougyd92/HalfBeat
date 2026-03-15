@@ -1,0 +1,613 @@
+.home {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn {
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #1a1a1a;
+  color: #fff;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #333;
+}
+
+.btn-primary {
+  background: #1db954;
+  border-color: #1db954;
+}
+
+.btn-primary:hover {
+  background: #1ed760;
+}
+
+.btn-large {
+  padding: 0.75rem 2rem;
+  font-size: 1.25rem;
+}
+
+.btn-small {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.auth-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.auth-connected {
+  color: #1db954;
+  font-weight: 600;
+}
+
+.player-status {
+  color: #999;
+  margin: 1rem 0;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.playback-controls {
+  margin: 1.5rem 0;
+}
+
+.now-playing {
+  margin: 2rem 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  justify-content: center;
+}
+
+.album-art {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+}
+
+.track-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.artist-name {
+  color: #999;
+  font-size: 0.95rem;
+}
+
+.error {
+  color: #e74c3c;
+  background: #2d1515;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+/* Playlist Picker */
+.playlist-picker h2 {
+  margin-bottom: 1rem;
+}
+
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 1.5rem;
+}
+
+.playlist-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+
+.playlist-card:hover {
+  border-color: #555;
+}
+
+.playlist-card.selected {
+  border-color: #1db954;
+}
+
+.playlist-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.playlist-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.playlist-count {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.game-config {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.game-config label {
+  font-size: 0.95rem;
+}
+
+.game-config input[type="number"] {
+  width: 60px;
+  padding: 0.3rem;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #fff;
+  text-align: center;
+  font-size: 1rem;
+}
+
+/* Game Start */
+.game-start {
+  margin-top: 2rem;
+}
+
+.game-start p {
+  color: #999;
+  margin-bottom: 1rem;
+}
+
+/* Round View */
+.round-view {
+  margin-top: 1.5rem;
+}
+
+.round-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+/* Listening animation */
+.round-playing {
+  padding: 2rem 0;
+}
+
+.listening-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 1rem;
+}
+
+.listening-dot {
+  width: 10px;
+  height: 10px;
+  background: #1db954;
+  border-radius: 50%;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.listening-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.listening-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Guessing */
+.round-guessing {
+  padding: 1rem 0;
+}
+
+.round-guessing p {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.guess-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.guess-input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.guess-input:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
+/* Revealed */
+.round-revealed {
+  padding: 1rem 0;
+}
+
+.result-badge {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.result-badge.correct {
+  color: #1db954;
+}
+
+.result-badge.incorrect {
+  color: #e74c3c;
+}
+
+.revealed-track {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.track-details {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+/* Scoreboard */
+.scoreboard h2 {
+  margin-bottom: 0.5rem;
+}
+
+.final-score {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #1db954;
+  margin-bottom: 1.5rem;
+}
+
+.round-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: #1a1a1a;
+}
+
+.result-icon {
+  font-weight: 700;
+  font-size: 1.1rem;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.result-row.correct .result-icon {
+  color: #1db954;
+}
+
+.result-row.incorrect .result-icon {
+  color: #e74c3c;
+}
+
+.result-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.result-track {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.result-artist {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.result-guess {
+  color: #777;
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* Player Page */
+.player-page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.join-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 300px;
+  margin: 2rem auto;
+}
+
+.player-joined {
+  color: #1db954;
+  margin-bottom: 1rem;
+}
+
+.player-list {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.player-tag {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.player-tag.you {
+  border-color: #1db954;
+  color: #1db954;
+}
+
+.waiting-message {
+  color: #999;
+  margin: 3rem 0;
+}
+
+.buzz-section {
+  margin: 2rem 0;
+}
+
+.buzz-section p {
+  color: #999;
+  margin-bottom: 1.5rem;
+}
+
+.buzz-btn {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  font-size: 2rem;
+  font-weight: 700;
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.buzz-btn:hover {
+  background: #c0392b;
+}
+
+.buzz-btn:active {
+  transform: scale(0.95);
+}
+
+.buzz-result-section {
+  margin: 2rem 0;
+}
+
+.buzz-feedback {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.you-buzzed {
+  color: #1db954;
+}
+
+.someone-buzzed {
+  color: #f39c12;
+}
+
+.round-reveal-player {
+  margin: 2rem 0;
+}
+
+.result-badge-player {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.result-badge-player .correct {
+  color: #1db954;
+}
+
+.result-badge-player .incorrect {
+  color: #e74c3c;
+}
+
+.game-over-player {
+  margin: 2rem 0;
+}
+
+/* Connected Players (host view) */
+.connected-players {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.players-label {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.buzzed-by {
+  color: #f39c12;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.no-players {
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.tag-score {
+  margin-left: 0.35rem;
+  font-weight: 700;
+  color: #1db954;
+}
+
+/* Player Scores (scoreboard) */
+.player-scores {
+  margin: 1.5rem 0;
+}
+
+.player-score-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #1a1a1a;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.player-rank {
+  color: #999;
+  font-weight: 600;
+  width: 24px;
+}
+
+.player-score-name {
+  flex: 1;
+  font-weight: 600;
+  text-align: left;
+}
+
+.player-score-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1db954;
+}
+
+/* Countdown */
+.countdown-text {
+  color: #999;
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.countdown-text.paused-text {
+  color: #f39c12;
+  font-weight: 600;
+}
+
+/* Game Controls (Pause / Resume / Restart) */
+.game-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.btn-control {
+  padding: 0.4rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.btn-pause {
+  background: #555;
+  border-color: #555;
+}
+
+.btn-pause:hover {
+  background: #666;
+}
+
+.btn-resume {
+  background: #1db954;
+  border-color: #1db954;
+}
+
+.btn-resume:hover {
+  background: #1ed760;
+}
+
+.btn-restart {
+  background: #e74c3c;
+  border-color: #e74c3c;
+}
+
+.btn-restart:hover {
+  background: #c0392b;
+}
