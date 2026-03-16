@@ -106,6 +106,16 @@ export function setup(server: Server): void {
         });
       }
 
+      if (msg.type === "lastChanceGuess" && msg.guess) {
+        const conn = connections.find((c) => c.ws === ws);
+        if (!conn) return;
+        try {
+          gameEngine.submitLastChanceGuess(conn.player.name, msg.guess.trim());
+        } catch {
+          // Phase not lastChance, etc.
+        }
+      }
+
       if (msg.type === "guess" && msg.guess) {
         const conn = connections.find((c) => c.ws === ws);
         if (!conn) return;

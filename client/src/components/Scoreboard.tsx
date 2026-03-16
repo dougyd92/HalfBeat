@@ -28,13 +28,15 @@ export function Scoreboard({ score, totalRounds, rounds, scores, onPlayAgain }: 
             <div key={name} className="player-score-row">
               <span className="player-rank">{i + 1}.</span>
               <span className="player-score-name">{name}</span>
-              <span className="player-score-value">{playerScore}</span>
+              <span className="player-score-value">
+                {Number.isInteger(playerScore) ? playerScore : playerScore.toFixed(1)}
+              </span>
             </div>
           ))}
         </div>
       ) : (
         <div className="final-score">
-          {score} / {totalRounds}
+          {Number.isInteger(score) ? score : score.toFixed(1)} / {totalRounds}
         </div>
       )}
 

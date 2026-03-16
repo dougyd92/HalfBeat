@@ -3,7 +3,7 @@ import { useState, useEffect, type FormEvent } from "react";
 interface RoundViewProps {
   roundIndex: number;
   totalRounds: number;
-  phase: "playing" | "guessing" | "revealed";
+  phase: "playing" | "guessing" | "revealed" | "lastChance";
   guess: string | null;
   correct: boolean | null;
   track: { name: string; artists: string[]; albumArt: string | null } | null;
@@ -13,12 +13,18 @@ interface RoundViewProps {
   onReplay: () => void;
   onGuess?: (guess: string) => void;
   isLastRound: boolean;
+  clipPlayStartedAt: number | null;
+  clipDurationMs: number;
+  eliminatedPlayers: string[];
+  guessDeadline: number | null;
+  lastChanceSubmitted: string[];
 }
 
 export function RoundView({
   roundIndex,
   totalRounds,
   phase,
+  guess,
   correct,
   track,
   score,
@@ -27,9 +33,70 @@ export function RoundView({
   onReplay,
   onGuess,
   isLastRound,
+  clipPlayStartedAt,
+  clipDurationMs,
+  eliminatedPlayers,
+  guessDeadline,
+  lastChanceSubmitted,
 }: RoundViewProps) {
   const [guessText, setGuessText] = useState("");
   const [countdown, setCountdown] = useState(3);
+  const [remaining, setRemaining] = useState(1);
+  const [lastChanceCountdown, setLastChanceCountdown] = useState(8);
+  const [guessCountdown, setGuessCountdown] = useState<number | null>(null);
+
+  // Clip timer countdown
+  useEffect(() => {
+    if (phase !== "playing" || paused || !clipPlayStartedAt || !clipDurationMs) {
+      setRemaining(1);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - clipPlayStartedAt;
+      const frac = Math.max(0, (clipDurationMs - elapsed) / clipDurationMs);
+      setRemaining(frac);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [phase, paused, clipPlayStartedAt, clipDurationMs]);
+
+  // Guess timer countdown
+  useEffect(() => {
+    if (phase !== "guessing" || !guessDeadline) {
+      setGuessCountdown(null);
+      return;
+    }
+
+    const tick = () => {
+      const secs = Math.max(0, Math.ceil((guessDeadline - Date.now()) / 1000));
+      setGuessCountdown(secs);
+    };
+    tick();
+    const interval = setInterval(tick, 500);
+    return () => clearInterval(interval);
+  }, [phase, guessDeadline]);
+
+  // Last Chance 8-second countdown
+  useEffect(() => {
+    if (phase !== "lastChance") {
+      setLastChanceCountdown(8);
+      return;
+    }
+
+    setLastChanceCountdown(8);
+    const interval = setInterval(() => {
+      setLastChanceCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase, roundIndex]);
 
   // Visual countdown when revealed (non-last round)
   useEffect(() => {
@@ -60,6 +127,8 @@ export function RoundView({
     }
   };
 
+  const secondsLeft = Math.ceil(remaining * (clipDurationMs / 1000));
+
   return (
     <div className="round-view">
       <div className="round-header">
@@ -67,25 +136,50 @@ export function RoundView({
           Round {roundIndex + 1} / {totalRounds}
         </span>
         <span className="round-score">
-          {score} / {roundIndex + (phase === "revealed" ? 1 : 0)} correct
+          {Number.isInteger(score) ? score : score.toFixed(1)} /{" "}
+          {roundIndex + (phase === "revealed" ? 1 : 0)} correct
         </span>
       </div>
 
       {phase === "playing" && (
         <div className="round-playing">
-          <div className="listening-indicator">
-            <span className="listening-dot" />
-            <span className="listening-dot" />
-            <span className="listening-dot" />
-          </div>
-          <p>Listening...</p>
+          {!paused && (
+            <>
+              <div
+                className="clip-timer"
+                style={
+                  { "--remaining": remaining } as React.CSSProperties
+                }
+              >
+                <span className="clip-timer-text">{secondsLeft}</span>
+              </div>
+              <div className="listening-indicator">
+                <span className="listening-dot" />
+                <span className="listening-dot" />
+                <span className="listening-dot" />
+              </div>
+              <p>Listening...</p>
+            </>
+          )}
+          {paused && (
+            <p className="countdown-text paused-text">Paused</p>
+          )}
+          {eliminatedPlayers.length > 0 && (
+            <p className="eliminated-names">
+              Out: {eliminatedPlayers.join(", ")}
+            </p>
+          )}
         </div>
       )}
 
       {phase === "guessing" && (
         <div className="round-guessing">
-          {buzzedBy ? (
-            <p>Waiting for <strong>{buzzedBy}</strong> to guess...</p>
+          {buzzedBy && correct === false ? (
+            <p className="wrong-guess-feedback">
+              <strong>{buzzedBy}</strong> {guess != null ? "guessed wrong" : "ran out of time"}
+            </p>
+          ) : buzzedBy ? (
+            <p>Waiting for <strong>{buzzedBy}</strong> to guess... {guessCountdown != null && `(${guessCountdown}s)`}</p>
           ) : onGuess ? (
             <>
               <p>What song was that?</p>
@@ -108,6 +202,18 @@ export function RoundView({
             </>
           ) : (
             <p>Time's up!</p>
+          )}
+        </div>
+      )}
+
+      {phase === "lastChance" && (
+        <div className="round-last-chance">
+          <p className="last-chance-title">Last Chance!</p>
+          <p>Players are guessing... ({lastChanceCountdown}s)</p>
+          {lastChanceSubmitted.length > 0 && (
+            <p className="last-chance-submitted">
+              Submitted: {lastChanceSubmitted.join(", ")}
+            </p>
           )}
         </div>
       )}

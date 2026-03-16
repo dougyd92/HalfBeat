@@ -11,7 +11,7 @@ export interface Player {
   name: string;
 }
 
-export type RoundPhase = "playing" | "guessing" | "revealed";
+export type RoundPhase = "playing" | "guessing" | "revealed" | "lastChance";
 
 export interface Round {
   index: number;
@@ -22,6 +22,11 @@ export interface Round {
   guess: string | null;
   correct: boolean | null;
   buzzedBy: string | null;
+  clipPlayStartedAt: number | null;
+  eliminatedPlayers: string[];
+  guessDeadline: number | null;
+  lastChanceGuesses: Record<string, string>;
+  lastChanceResults: Record<string, boolean>;
 }
 
 export type GameStatus = "active" | "finished";
@@ -47,6 +52,7 @@ export interface RoundResult {
   albumArt: string | null;
   guess: string | null;
   correct: boolean;
+  lastChanceResults?: Record<string, { guess: string; correct: boolean }>;
 }
 
 /** Sanitized state sent to the client — hides track info until revealed */
@@ -63,6 +69,13 @@ export interface ClientGameState {
     correct: boolean | null;
     track: { name: string; artists: string[]; albumArt: string | null } | null;
     buzzedBy: string | null;
+    clipPlayStartedAt: number | null;
+    clipDurationMs: number;
+    eliminatedPlayers: string[];
+    guessDeadline: number | null;
+    lastChanceSubmitted: string[];
+    lastChanceGuesses: Record<string, string>;
+    lastChanceResults: Record<string, boolean>;
   } | null;
   rounds: RoundResult[];
   players: Player[];

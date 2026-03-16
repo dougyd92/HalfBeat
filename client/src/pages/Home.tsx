@@ -120,6 +120,11 @@ export function Home() {
             onReplay={replayClip}
             onGuess={hasPlayers ? undefined : handleGuess}
             isLastRound={gameState.currentRoundIndex >= gameState.totalRounds - 1}
+            clipPlayStartedAt={gameState.round.clipPlayStartedAt}
+            clipDurationMs={gameState.round.clipDurationMs}
+            eliminatedPlayers={gameState.round.eliminatedPlayers}
+            guessDeadline={gameState.round.guessDeadline}
+            lastChanceSubmitted={gameState.round.lastChanceSubmitted}
           />
         </>
       )}

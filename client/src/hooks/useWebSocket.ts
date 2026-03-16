@@ -20,11 +20,18 @@ interface GameState {
   currentRoundIndex: number;
   score: number;
   round: {
-    phase: "playing" | "guessing" | "revealed";
+    phase: "playing" | "guessing" | "revealed" | "lastChance";
     guess: string | null;
     correct: boolean | null;
     track: { name: string; artists: string[]; albumArt: string | null } | null;
     buzzedBy: string | null;
+    clipPlayStartedAt: number | null;
+    clipDurationMs: number;
+    eliminatedPlayers: string[];
+    guessDeadline: number | null;
+    lastChanceSubmitted: string[];
+    lastChanceGuesses: Record<string, string>;
+    lastChanceResults: Record<string, boolean>;
   } | null;
   rounds: RoundResult[];
   players: Player[];
@@ -40,6 +47,7 @@ interface UseWebSocketReturn {
   join: (name: string) => void;
   buzz: () => void;
   guess: (text: string) => void;
+  lastChanceGuess: (text: string) => void;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
@@ -104,5 +112,23 @@ export function useWebSocket(): UseWebSocketReturn {
     }
   }, []);
 
-  return { connected, player, players, gameState, buzzResult, join, buzz, guess };
+  const lastChanceGuess = useCallback((text: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: "lastChanceGuess", guess: text })
+      );
+    }
+  }, []);
+
+  return {
+    connected,
+    player,
+    players,
+    gameState,
+    buzzResult,
+    join,
+    buzz,
+    guess,
+    lastChanceGuess,
+  };
 }

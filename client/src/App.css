@@ -611,3 +611,102 @@ h1 {
 .btn-restart:hover {
   background: #c0392b;
 }
+
+/* --- Clip Timer --- */
+
+.clip-timer {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  position: relative;
+  background: conic-gradient(
+    #333 calc((1 - var(--remaining)) * 360deg),
+    #1db954 calc((1 - var(--remaining)) * 360deg)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clip-timer::after {
+  content: "";
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #1a1a1a;
+}
+
+.clip-timer-text {
+  position: relative;
+  z-index: 1;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* --- Last Chance --- */
+
+.last-chance-section,
+.round-last-chance {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.last-chance-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f39c12;
+  margin-bottom: 0.5rem;
+  animation: flash 0.5s ease-in-out 3;
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.last-chance-submitted {
+  color: #999;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+.last-chance-reveal {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.lc-correct {
+  color: #1db954;
+}
+
+.lc-incorrect {
+  color: #e74c3c;
+}
+
+/* --- Eliminated (Second Chance) --- */
+
+.eliminated-message {
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.eliminated-message p:first-child {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e74c3c;
+  margin-bottom: 0.5rem;
+}
+
+.eliminated-names {
+  color: #999;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.waiting-text {
+  color: #999;
+  font-style: italic;
+}

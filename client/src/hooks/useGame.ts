@@ -9,11 +9,18 @@ interface Playlist {
 }
 
 interface RoundView {
-  phase: "playing" | "guessing" | "revealed";
+  phase: "playing" | "guessing" | "revealed" | "lastChance";
   guess: string | null;
   correct: boolean | null;
   track: { name: string; artists: string[]; albumArt: string | null } | null;
   buzzedBy: string | null;
+  clipPlayStartedAt: number | null;
+  clipDurationMs: number;
+  eliminatedPlayers: string[];
+  guessDeadline: number | null;
+  lastChanceSubmitted: string[];
+  lastChanceGuesses: Record<string, string>;
+  lastChanceResults: Record<string, boolean>;
 }
 
 interface RoundResult {
@@ -22,6 +29,7 @@ interface RoundResult {
   albumArt: string | null;
   guess: string | null;
   correct: boolean;
+  lastChanceResults?: Record<string, { guess: string; correct: boolean }>;
 }
 
 interface PlayerInfo {
