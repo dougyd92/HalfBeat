@@ -1,5 +1,11 @@
 import { useState, useEffect, type FormEvent } from "react";
 
+interface GuessFeedback {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+  keepGuessing: boolean;
+}
+
 interface RoundViewProps {
   roundIndex: number;
   totalRounds: number;
@@ -18,6 +24,13 @@ interface RoundViewProps {
   eliminatedPlayers: string[];
   guessDeadline: number | null;
   lastChanceSubmitted: string[];
+  titleGuessed: boolean;
+  artistGuessed: boolean;
+  titleGuessedBy: string | null;
+  artistGuessedBy: string | null;
+  feedback: GuessFeedback | null;
+  revealedName: string | null;
+  revealedArtists: string[] | null;
 }
 
 export function RoundView({
@@ -38,11 +51,18 @@ export function RoundView({
   eliminatedPlayers,
   guessDeadline,
   lastChanceSubmitted,
+  titleGuessed,
+  artistGuessed,
+  titleGuessedBy,
+  artistGuessedBy,
+  feedback,
+  revealedName,
+  revealedArtists,
 }: RoundViewProps) {
   const [guessText, setGuessText] = useState("");
   const [countdown, setCountdown] = useState(3);
   const [remaining, setRemaining] = useState(1);
-  const [lastChanceCountdown, setLastChanceCountdown] = useState(8);
+  const [lastChanceCountdown, setLastChanceCountdown] = useState(12);
   const [guessCountdown, setGuessCountdown] = useState<number | null>(null);
 
   // Clip timer countdown
@@ -80,11 +100,11 @@ export function RoundView({
   // Last Chance 8-second countdown
   useEffect(() => {
     if (phase !== "lastChance") {
-      setLastChanceCountdown(8);
+      setLastChanceCountdown(12);
       return;
     }
 
-    setLastChanceCountdown(8);
+    setLastChanceCountdown(12);
     const interval = setInterval(() => {
       setLastChanceCountdown((prev) => {
         if (prev <= 1) {
@@ -128,6 +148,17 @@ export function RoundView({
   };
 
   const secondsLeft = Math.ceil(remaining * (clipDurationMs / 1000));
+  const roundsCompleted = roundIndex + (phase === "revealed" ? 1 : 0);
+
+  const guessPlaceholder = feedback?.keepGuessing
+    ? feedback.titleCorrect
+      ? "Artist name..."
+      : "Song title..."
+    : titleGuessed && !artistGuessed
+      ? "Artist name..."
+      : artistGuessed && !titleGuessed
+        ? "Song title..."
+        : "Song title, artist, or both";
 
   return (
     <div className="round-view">
@@ -137,7 +168,7 @@ export function RoundView({
         </span>
         <span className="round-score">
           {Number.isInteger(score) ? score : score.toFixed(1)} /{" "}
-          {roundIndex + (phase === "revealed" ? 1 : 0)} correct
+          {roundsCompleted * 2} pts
         </span>
       </div>
 
@@ -159,6 +190,16 @@ export function RoundView({
                 <span className="listening-dot" />
               </div>
               <p>Listening...</p>
+              {(titleGuessed || artistGuessed) && (
+                <div className="partial-hint">
+                  {titleGuessed && !artistGuessed && (
+                    <p>Title: <strong>{revealedName}</strong> — guess the artist!</p>
+                  )}
+                  {artistGuessed && !titleGuessed && (
+                    <p>Artist: <strong>{revealedArtists?.join(", ")}</strong> — guess the title!</p>
+                  )}
+                </div>
+              )}
             </>
           )}
           {paused && (
@@ -174,21 +215,41 @@ export function RoundView({
 
       {phase === "guessing" && (
         <div className="round-guessing">
-          {buzzedBy && correct === false ? (
-            <p className="wrong-guess-feedback">
-              <strong>{buzzedBy}</strong> {guess != null ? "guessed wrong" : "ran out of time"}
-            </p>
+          {buzzedBy && correct === false && !feedback?.keepGuessing ? (
+            <>
+              {feedback && (feedback.titleCorrect || feedback.artistCorrect) && (
+                <p className="partial-correct-feedback">
+                  <strong>{buzzedBy}</strong> got the {feedback.titleCorrect ? `title: ${revealedName}` : `artist: ${revealedArtists?.join(", ")}`} (+1)
+                </p>
+              )}
+              <p className="wrong-guess-feedback">
+                <strong>{buzzedBy}</strong> {guess != null ? "guessed wrong" : "ran out of time"}
+              </p>
+            </>
+          ) : buzzedBy && feedback?.keepGuessing ? (
+            <>
+              <p className="partial-correct-feedback">
+                <strong>{buzzedBy}</strong> got the {feedback.titleCorrect ? `title: ${revealedName}` : `artist: ${revealedArtists?.join(", ")}`} (+1)
+              </p>
+              <p>Waiting for <strong>{buzzedBy}</strong> to guess the {feedback.titleCorrect ? "artist" : "title"}... {guessCountdown != null && `(${guessCountdown}s)`}</p>
+            </>
           ) : buzzedBy ? (
             <p>Waiting for <strong>{buzzedBy}</strong> to guess... {guessCountdown != null && `(${guessCountdown}s)`}</p>
           ) : onGuess ? (
             <>
-              <p>What song was that?</p>
+              {feedback?.keepGuessing ? (
+                <p className="partial-correct-feedback">
+                  Got the {feedback.titleCorrect ? `title: ${revealedName}` : `artist: ${revealedArtists?.join(", ")}`}! (+1) Now guess the {feedback.titleCorrect ? "artist" : "title"}!
+                </p>
+              ) : (
+                <p>Guess the song title, artist, or both!</p>
+              )}
               <form onSubmit={handleSubmit} className="guess-form">
                 <input
                   type="text"
                   value={guessText}
                   onChange={(e) => setGuessText(e.target.value)}
-                  placeholder="Type your guess..."
+                  placeholder={guessPlaceholder}
                   autoFocus
                   className="guess-input"
                 />
@@ -196,6 +257,9 @@ export function RoundView({
                   Guess
                 </button>
               </form>
+              {guessCountdown != null && (
+                <p className="guess-timer-text">({guessCountdown}s)</p>
+              )}
               <button className="btn btn-small" onClick={onReplay}>
                 Replay clip
               </button>
@@ -220,8 +284,8 @@ export function RoundView({
 
       {phase === "revealed" && track && (
         <div className="round-revealed">
-          <div className={`result-badge ${correct ? "correct" : "incorrect"}`}>
-            {correct ? "Correct!" : "Not quite"}
+          <div className={`result-badge ${titleGuessed && artistGuessed ? "correct" : titleGuessed || artistGuessed ? "partial" : "incorrect"}`}>
+            {titleGuessed && artistGuessed ? "2/2" : titleGuessed || artistGuessed ? "1/2" : "0/2"}
           </div>
 
           <div className="revealed-track">
@@ -233,6 +297,17 @@ export function RoundView({
               <span className="artist-name">{track.artists.join(", ")}</span>
             </div>
           </div>
+
+          {(titleGuessedBy || artistGuessedBy) && (
+            <div className="guess-breakdown">
+              {titleGuessedBy && (
+                <p className="lc-correct">{titleGuessedBy} got the title (+1)</p>
+              )}
+              {artistGuessedBy && (
+                <p className="lc-correct">{artistGuessedBy} got the artist (+1)</p>
+              )}
+            </div>
+          )}
 
           {!isLastRound && !paused && (
             <p className="countdown-text">Next round in {countdown}...</p>

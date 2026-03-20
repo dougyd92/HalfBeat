@@ -8,6 +8,17 @@ interface Playlist {
   trackCount: number;
 }
 
+interface GuessFeedback {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+  keepGuessing: boolean;
+}
+
+interface LastChancePlayerResult {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+}
+
 interface RoundView {
   phase: "playing" | "guessing" | "revealed" | "lastChance";
   guess: string | null;
@@ -20,7 +31,14 @@ interface RoundView {
   guessDeadline: number | null;
   lastChanceSubmitted: string[];
   lastChanceGuesses: Record<string, string>;
-  lastChanceResults: Record<string, boolean>;
+  lastChanceResults: Record<string, LastChancePlayerResult>;
+  titleGuessed: boolean;
+  artistGuessed: boolean;
+  titleGuessedBy: string | null;
+  artistGuessedBy: string | null;
+  feedback: GuessFeedback | null;
+  revealedName: string | null;
+  revealedArtists: string[] | null;
 }
 
 interface RoundResult {
@@ -29,7 +47,12 @@ interface RoundResult {
   albumArt: string | null;
   guess: string | null;
   correct: boolean;
-  lastChanceResults?: Record<string, { guess: string; correct: boolean }>;
+  titleGuessedBy?: string | null;
+  artistGuessedBy?: string | null;
+  lastChanceResults?: Record<
+    string,
+    { guess: string; titleCorrect: boolean; artistCorrect: boolean; points: number }
+  >;
 }
 
 interface PlayerInfo {

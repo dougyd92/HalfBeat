@@ -26,7 +26,23 @@ export interface Round {
   eliminatedPlayers: string[];
   guessDeadline: number | null;
   lastChanceGuesses: Record<string, string>;
-  lastChanceResults: Record<string, boolean>;
+  lastChanceResults: Record<string, LastChancePlayerResult>;
+  titleGuessed: boolean;
+  artistGuessed: boolean;
+  titleGuessedBy: string | null;
+  artistGuessedBy: string | null;
+  feedback: GuessFeedback | null;
+}
+
+export interface GuessFeedback {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+  keepGuessing: boolean;
+}
+
+export interface LastChancePlayerResult {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
 }
 
 export type GameStatus = "active" | "finished";
@@ -52,7 +68,12 @@ export interface RoundResult {
   albumArt: string | null;
   guess: string | null;
   correct: boolean;
-  lastChanceResults?: Record<string, { guess: string; correct: boolean }>;
+  titleGuessedBy: string | null;
+  artistGuessedBy: string | null;
+  lastChanceResults?: Record<
+    string,
+    { guess: string; titleCorrect: boolean; artistCorrect: boolean; points: number }
+  >;
 }
 
 /** Sanitized state sent to the client — hides track info until revealed */
@@ -75,7 +96,16 @@ export interface ClientGameState {
     guessDeadline: number | null;
     lastChanceSubmitted: string[];
     lastChanceGuesses: Record<string, string>;
-    lastChanceResults: Record<string, boolean>;
+    lastChanceResults: Record<string, LastChancePlayerResult>;
+    titleGuessed: boolean;
+    artistGuessed: boolean;
+    titleGuessedBy: string | null;
+    artistGuessedBy: string | null;
+    feedback: GuessFeedback | null;
+    /** Song title, revealed to all when titleGuessed is true (before full reveal) */
+    revealedName: string | null;
+    /** Artist names, revealed to all when artistGuessed is true (before full reveal) */
+    revealedArtists: string[] | null;
   } | null;
   rounds: RoundResult[];
   players: Player[];

@@ -18,7 +18,7 @@ export function Player() {
   const [lastChanceInput, setLastChanceInput] = useState("");
   const [countdown, setCountdown] = useState(3);
   const [remaining, setRemaining] = useState(1);
-  const [lastChanceCountdown, setLastChanceCountdown] = useState(8);
+  const [lastChanceCountdown, setLastChanceCountdown] = useState(12);
   const [guessCountdown, setGuessCountdown] = useState<number | null>(null);
 
   const round = gameState?.round;
@@ -70,12 +70,12 @@ export function Player() {
   // Last Chance 8-second countdown
   useEffect(() => {
     if (round?.phase !== "lastChance") {
-      setLastChanceCountdown(8);
+      setLastChanceCountdown(12);
       setLastChanceInput("");
       return;
     }
 
-    setLastChanceCountdown(8);
+    setLastChanceCountdown(12);
     const interval = setInterval(() => {
       setLastChanceCountdown((prev) => {
         if (prev <= 1) {
@@ -236,6 +236,16 @@ export function Player() {
             Round {(gameState?.currentRoundIndex ?? 0) + 1} of{" "}
             {gameState?.totalRounds}
           </p>
+          {(round?.titleGuessed || round?.artistGuessed) && (
+            <div className="partial-hint">
+              {round?.titleGuessed && !round?.artistGuessed && (
+                <p>Title: <strong>{round.revealedName}</strong> — now guess the artist!</p>
+              )}
+              {round?.artistGuessed && !round?.titleGuessed && (
+                <p>Artist: <strong>{round.revealedArtists?.join(", ")}</strong> — now guess the title!</p>
+              )}
+            </div>
+          )}
           <button className="btn buzz-btn" onClick={buzz}>
             BUZZ
           </button>
@@ -265,10 +275,45 @@ export function Player() {
 
       {isGuessing && (
         <div className="buzz-result-section">
-          {iBuzzed && round?.correct === false ? (
-            <p className="buzz-feedback incorrect">
-              {round?.guess != null ? "Wrong!" : "Time's up!"}
-            </p>
+          {iBuzzed && round?.correct === false && !round?.feedback?.keepGuessing ? (
+            <>
+              {round?.feedback && (round.feedback.titleCorrect || round.feedback.artistCorrect) && (
+                <p className="buzz-feedback partial-correct">
+                  {round.feedback.titleCorrect ? "Got the title! (+1)" : "Got the artist! (+1)"}
+                </p>
+              )}
+              <p className="buzz-feedback incorrect">
+                {round?.guess != null ? "Wrong!" : "Time's up!"}
+              </p>
+            </>
+          ) : iBuzzed && round?.feedback?.keepGuessing ? (
+            <>
+              <p className="buzz-feedback partial-correct">
+                {round.feedback.titleCorrect
+                  ? <>Got the title: <strong>{round.revealedName}</strong> (+1)</>
+                  : <>Got the artist: <strong>{round.revealedArtists?.join(", ")}</strong> (+1)</>}
+              </p>
+              <p className="buzz-feedback you-buzzed">
+                Now guess the {round.feedback.titleCorrect ? "artist" : "title"}! {guessCountdown != null && `(${guessCountdown}s)`}
+              </p>
+              <form onSubmit={handleGuess} className="guess-form">
+                <input
+                  type="text"
+                  value={guessInput}
+                  onChange={(e) => setGuessInput(e.target.value)}
+                  placeholder={round.feedback.titleCorrect ? "Artist name..." : "Song title..."}
+                  autoFocus
+                  className="guess-input"
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!guessInput.trim()}
+                >
+                  Guess
+                </button>
+              </form>
+            </>
           ) : iBuzzed ? (
             <>
               <p className="buzz-feedback you-buzzed">You buzzed in! {guessCountdown != null && `(${guessCountdown}s)`}</p>
@@ -277,7 +322,7 @@ export function Player() {
                   type="text"
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
-                  placeholder="What song is it?"
+                  placeholder="Song title, artist, or both"
                   autoFocus
                   className="guess-input"
                 />
@@ -305,13 +350,29 @@ export function Player() {
           <p className="last-chance-title">Last Chance!</p>
           {!hasSubmittedLastChance ? (
             <>
-              <p>Quick — guess the song! ({lastChanceCountdown}s)</p>
+              {round?.titleGuessed && round.revealedName && (
+                <p className="partial-hint">Title: <strong>{round.revealedName}</strong></p>
+              )}
+              {round?.artistGuessed && round.revealedArtists && (
+                <p className="partial-hint">Artist: <strong>{round.revealedArtists.join(", ")}</strong></p>
+              )}
+              <p>
+                Quick — guess{" "}
+                {round?.titleGuessed ? "the artist" : round?.artistGuessed ? "the title" : "the song"}
+                ! ({lastChanceCountdown}s)
+              </p>
               <form onSubmit={handleLastChanceGuess} className="guess-form">
                 <input
                   type="text"
                   value={lastChanceInput}
                   onChange={(e) => setLastChanceInput(e.target.value)}
-                  placeholder="What song is it?"
+                  placeholder={
+                    round?.titleGuessed
+                      ? "Artist name..."
+                      : round?.artistGuessed
+                        ? "Song title..."
+                        : "Song title, artist, or both"
+                  }
                   autoFocus
                   className="guess-input"
                 />
@@ -335,10 +396,12 @@ export function Player() {
       {isRevealed && round?.track && (
         <div className="round-reveal-player">
           <div className="result-badge-player">
-            {round.correct ? (
-              <span className="correct">Correct!</span>
+            {round.titleGuessed && round.artistGuessed ? (
+              <span className="correct">2/2</span>
+            ) : round.titleGuessed || round.artistGuessed ? (
+              <span className="partial">1/2</span>
             ) : (
-              <span className="incorrect">Not quite</span>
+              <span className="incorrect">0/2</span>
             )}
           </div>
           <div className="revealed-track">
@@ -352,22 +415,33 @@ export function Player() {
               </span>
             </div>
           </div>
+          {(round.titleGuessedBy || round.artistGuessedBy) && (
+            <div className="guess-breakdown">
+              {round.titleGuessedBy && (
+                <p className="lc-correct">{round.titleGuessedBy} got the title (+1)</p>
+              )}
+              {round.artistGuessedBy && (
+                <p className="lc-correct">{round.artistGuessedBy} got the artist (+1)</p>
+              )}
+            </div>
+          )}
           {Object.keys(round.lastChanceResults ?? {}).length > 0 && (
             <div className="last-chance-reveal">
               {Object.entries(round.lastChanceGuesses ?? {}).map(
-                ([name, guess]) => (
-                  <p
-                    key={name}
-                    className={
-                      round.lastChanceResults?.[name]
-                        ? "lc-correct"
-                        : "lc-incorrect"
-                    }
-                  >
-                    {name}: "{guess}"{" "}
-                    {round.lastChanceResults?.[name] ? "(+0.5)" : ""}
-                  </p>
-                )
+                ([name, guess]) => {
+                  const r = round.lastChanceResults?.[name];
+                  const points =
+                    (r?.titleCorrect ? 0.5 : 0) + (r?.artistCorrect ? 0.5 : 0);
+                  return (
+                    <p
+                      key={name}
+                      className={points > 0 ? "lc-correct" : "lc-incorrect"}
+                    >
+                      {name}: &quot;{guess}&quot;{" "}
+                      {points > 0 ? `(+${points % 1 === 0 ? points : points.toFixed(1)})` : ""}
+                    </p>
+                  );
+                }
               )}
             </div>
           )}

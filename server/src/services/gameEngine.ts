@@ -6,6 +6,7 @@ import type {
   ClientGameState,
   Round,
   RoundResult,
+  GuessFeedback,
 } from "../types/game.js";
 
 let game: GameState | null = null;
@@ -20,6 +21,7 @@ let broadcastFn: (() => void) | null = null;
 const ADVANCE_DELAY_MS = 3000;
 const GUESS_TIME_LIMIT_MS = 15000;
 const WRONG_GUESS_DELAY_MS = 2000;
+const SECOND_GUESS_EXTENSION_MS = 10000;
 
 /** Register a callback that fires whenever game state changes */
 export function setBroadcast(fn: () => void): void {
@@ -60,6 +62,48 @@ function fuzzyMatch(guess: string, trackName: string): boolean {
   if (g.length >= 4 && t.includes(g)) return true;
   if (t.length >= 4 && g.includes(t)) return true;
   return false;
+}
+
+function evaluateGuess(
+  input: string,
+  track: Track,
+  titleAlreadyGuessed: boolean,
+  artistAlreadyGuessed: boolean
+): { titleMatch: boolean; artistMatch: boolean; attemptedBoth: boolean } {
+  const titleMatch =
+    !titleAlreadyGuessed && fuzzyMatch(input, track.name);
+  const artistMatch =
+    !artistAlreadyGuessed && track.artists.some((a) => fuzzyMatch(input, a));
+
+  if (titleMatch && artistMatch) {
+    return { titleMatch: true, artistMatch: true, attemptedBoth: true };
+  }
+
+  if (!titleMatch && !artistMatch) {
+    return { titleMatch: false, artistMatch: false, attemptedBoth: false };
+  }
+
+  // One matched — check if the remaining text suggests a second guess attempt
+  const normalizedInput = normalize(input);
+  let matchedText: string;
+
+  if (titleMatch) {
+    matchedText = normalize(track.name);
+  } else {
+    // Find the matching artist (use longest match for best removal)
+    const matchingArtists = track.artists
+      .filter((a) => fuzzyMatch(input, a))
+      .map((a) => normalize(a));
+    matchedText = matchingArtists.reduce(
+      (longest, a) => (a.length > longest.length ? a : longest),
+      ""
+    );
+  }
+
+  const remaining = normalizedInput.replace(matchedText, "").trim();
+  const attemptedBoth = remaining.length >= 2;
+
+  return { titleMatch, artistMatch, attemptedBoth };
 }
 
 // --- Player management ---
@@ -190,6 +234,11 @@ export function startRound(): ClientGameState {
     guessDeadline: null,
     lastChanceGuesses: {},
     lastChanceResults: {},
+    titleGuessed: false,
+    artistGuessed: false,
+    titleGuessedBy: null,
+    artistGuessedBy: null,
+    feedback: null,
   };
 
   const state = getState();
@@ -248,6 +297,8 @@ export async function playClip(): Promise<void> {
             albumArt: round.track.albumArt,
             guess: null,
             correct: false,
+            titleGuessedBy: round.titleGuessedBy,
+            artistGuessedBy: round.artistGuessedBy,
           });
 
           if (game.currentRoundIndex >= game.totalRounds - 1) {
@@ -313,7 +364,9 @@ export async function handleBuzz(playerId: string): Promise<boolean> {
 // --- Guessing ---
 
 export function submitGuess(guess: string): {
-  correct: boolean;
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+  keepGuessing: boolean;
   answer: { name: string; artists: string[]; albumArt: string | null } | null;
 } {
   if (!game || !game.currentRound) {
@@ -333,18 +386,44 @@ export function submitGuess(guess: string): {
   }
 
   const round = game.currentRound;
-  const correct = fuzzyMatch(guess, round.track.name);
+  const result = evaluateGuess(
+    guess,
+    round.track,
+    round.titleGuessed,
+    round.artistGuessed
+  );
 
-  if (correct) {
-    // Correct guess — award point, reveal answer
+  const pointsAwarded =
+    (result.titleMatch ? 1 : 0) + (result.artistMatch ? 1 : 0);
+
+  // Award points
+  if (pointsAwarded > 0) {
+    game.score += pointsAwarded;
+    if (round.buzzedBy && game.scores[round.buzzedBy] !== undefined) {
+      game.scores[round.buzzedBy] += pointsAwarded;
+    }
+    if (result.titleMatch) {
+      round.titleGuessed = true;
+      round.titleGuessedBy = round.buzzedBy;
+    }
+    if (result.artistMatch) {
+      round.artistGuessed = true;
+      round.artistGuessedBy = round.buzzedBy;
+    }
+  }
+
+  const allGuessed = round.titleGuessed && round.artistGuessed;
+
+  // CASE 1: Both correct (or all remaining pieces correct) — reveal
+  if (allGuessed) {
     round.guess = guess;
     round.correct = true;
+    round.feedback = {
+      titleCorrect: result.titleMatch,
+      artistCorrect: result.artistMatch,
+      keepGuessing: false,
+    };
     round.phase = "revealed";
-
-    game.score++;
-    if (round.buzzedBy && game.scores[round.buzzedBy] !== undefined) {
-      game.scores[round.buzzedBy]++;
-    }
 
     game.rounds.push({
       trackName: round.track.name,
@@ -352,6 +431,8 @@ export function submitGuess(guess: string): {
       albumArt: round.track.albumArt,
       guess,
       correct: true,
+      titleGuessedBy: round.titleGuessedBy,
+      artistGuessedBy: round.artistGuessedBy,
     });
 
     if (game.currentRoundIndex >= game.totalRounds - 1) {
@@ -362,7 +443,9 @@ export function submitGuess(guess: string): {
 
     broadcast();
     return {
-      correct: true,
+      titleCorrect: result.titleMatch,
+      artistCorrect: result.artistMatch,
+      keepGuessing: false,
       answer: {
         name: round.track.name,
         artists: round.track.artists,
@@ -371,10 +454,65 @@ export function submitGuess(guess: string): {
     };
   }
 
-  // Wrong guess — show feedback, then transition after delay
+  // CASE 2: One correct, attempted both — partial credit + eliminate
+  if (pointsAwarded > 0 && result.attemptedBoth) {
+    round.guess = guess;
+    round.correct = false;
+    round.feedback = {
+      titleCorrect: result.titleMatch,
+      artistCorrect: result.artistMatch,
+      keepGuessing: false,
+    };
+    broadcast();
+
+    wrongGuessTimer = setTimeout(() => {
+      wrongGuessTimer = null;
+      if (!game?.currentRound || game.currentRound !== round) return;
+
+      if (round.buzzedBy) {
+        round.eliminatedPlayers.push(round.buzzedBy);
+      }
+
+      transitionAfterWrongGuess(round);
+    }, WRONG_GUESS_DELAY_MS);
+
+    return {
+      titleCorrect: result.titleMatch,
+      artistCorrect: result.artistMatch,
+      keepGuessing: false,
+      answer: null,
+    };
+  }
+
+  // CASE 3: One correct, only guessed one thing — keep guessing with timer extension
+  if (pointsAwarded > 0 && !result.attemptedBoth) {
+    round.guess = guess;
+    round.correct = null; // not fully resolved yet
+    round.feedback = {
+      titleCorrect: result.titleMatch,
+      artistCorrect: result.artistMatch,
+      keepGuessing: true,
+    };
+    round.guessDeadline = Date.now() + SECOND_GUESS_EXTENSION_MS;
+    startGuessTimer(SECOND_GUESS_EXTENSION_MS);
+    broadcast();
+
+    return {
+      titleCorrect: result.titleMatch,
+      artistCorrect: result.artistMatch,
+      keepGuessing: true,
+      answer: null,
+    };
+  }
+
+  // CASE 4: Neither correct — wrong guess, eliminate
   round.guess = guess;
   round.correct = false;
-  // Keep buzzedBy intact so UI knows who guessed wrong
+  round.feedback = {
+    titleCorrect: false,
+    artistCorrect: false,
+    keepGuessing: false,
+  };
   broadcast();
 
   wrongGuessTimer = setTimeout(() => {
@@ -385,41 +523,52 @@ export function submitGuess(guess: string): {
       round.eliminatedPlayers.push(round.buzzedBy);
     }
 
-    const eligiblePlayers = players.filter(
-      (p) => !round.eliminatedPlayers.includes(p.name)
-    );
-
-    if (eligiblePlayers.length > 0) {
-      round.buzzedBy = null;
-      round.guess = null;
-      round.correct = null;
-      round.phase = "playing";
-
-      playClip(); // async fire-and-forget
-    } else {
-      round.buzzedBy = null;
-      round.guess = null;
-      round.correct = null;
-      round.phase = "lastChance";
-
-      startLastChanceTimer();
-    }
-
-    broadcast();
+    transitionAfterWrongGuess(round);
   }, WRONG_GUESS_DELAY_MS);
 
-  return { correct: false, answer: null };
+  return {
+    titleCorrect: false,
+    artistCorrect: false,
+    keepGuessing: false,
+    answer: null,
+  };
+}
+
+function transitionAfterWrongGuess(round: Round): void {
+  const eligiblePlayers = players.filter(
+    (p) => !round.eliminatedPlayers.includes(p.name)
+  );
+
+  if (eligiblePlayers.length > 0) {
+    round.buzzedBy = null;
+    round.guess = null;
+    round.correct = null;
+    round.feedback = null;
+    round.phase = "playing";
+
+    playClip(); // async fire-and-forget
+  } else {
+    round.buzzedBy = null;
+    round.guess = null;
+    round.correct = null;
+    round.feedback = null;
+    round.phase = "lastChance";
+
+    startLastChanceTimer();
+  }
+
+  broadcast();
 }
 
 // --- Guess Timer ---
 
-function startGuessTimer(): void {
+function startGuessTimer(durationMs: number = GUESS_TIME_LIMIT_MS): void {
   if (guessTimer) clearTimeout(guessTimer);
   guessTimer = setTimeout(() => {
     guessTimer = null;
     if (!game?.currentRound || game.currentRound.phase !== "guessing") return;
     handleGuessTimeout();
-  }, GUESS_TIME_LIMIT_MS);
+  }, durationMs);
 }
 
 function handleGuessTimeout(): void {
@@ -429,6 +578,7 @@ function handleGuessTimeout(): void {
   // Treat timeout as a wrong guess — show feedback, then transition after delay
   round.guess = null;
   round.correct = false;
+  round.feedback = null;
   // Keep buzzedBy intact so UI knows who timed out
   broadcast();
 
@@ -440,27 +590,7 @@ function handleGuessTimeout(): void {
       round.eliminatedPlayers.push(round.buzzedBy);
     }
 
-    const eligiblePlayers = players.filter(
-      (p) => !round.eliminatedPlayers.includes(p.name)
-    );
-
-    if (eligiblePlayers.length > 0) {
-      round.buzzedBy = null;
-      round.guess = null;
-      round.correct = null;
-      round.phase = "playing";
-
-      playClip();
-    } else {
-      round.buzzedBy = null;
-      round.guess = null;
-      round.correct = null;
-      round.phase = "lastChance";
-
-      startLastChanceTimer();
-    }
-
-    broadcast();
+    transitionAfterWrongGuess(round);
   }, WRONG_GUESS_DELAY_MS);
 }
 
@@ -475,27 +605,7 @@ function startWrongGuessTimer(): void {
       round.eliminatedPlayers.push(round.buzzedBy);
     }
 
-    const eligiblePlayers = players.filter(
-      (p) => !round.eliminatedPlayers.includes(p.name)
-    );
-
-    if (eligiblePlayers.length > 0) {
-      round.buzzedBy = null;
-      round.guess = null;
-      round.correct = null;
-      round.phase = "playing";
-
-      playClip();
-    } else {
-      round.buzzedBy = null;
-      round.guess = null;
-      round.correct = null;
-      round.phase = "lastChance";
-
-      startLastChanceTimer();
-    }
-
-    broadcast();
+    transitionAfterWrongGuess(round);
   }, WRONG_GUESS_DELAY_MS);
 }
 
@@ -507,7 +617,7 @@ function startLastChanceTimer(): void {
     lastChanceTimer = null;
     if (!game?.currentRound || game.currentRound.phase !== "lastChance") return;
     resolveLastChance();
-  }, 8000);
+  }, 12000);
 }
 
 export function submitLastChanceGuess(playerName: string, guess: string): void {
@@ -518,7 +628,18 @@ export function submitLastChanceGuess(playerName: string, guess: string): void {
   if (round.lastChanceGuesses[playerName] !== undefined) return;
 
   round.lastChanceGuesses[playerName] = guess;
-  round.lastChanceResults[playerName] = fuzzyMatch(guess, round.track.name);
+
+  // Evaluate against remaining unguessed pieces
+  const result = evaluateGuess(
+    guess,
+    round.track,
+    round.titleGuessed,
+    round.artistGuessed
+  );
+  round.lastChanceResults[playerName] = {
+    titleCorrect: result.titleMatch,
+    artistCorrect: result.artistMatch,
+  };
 
   broadcast();
 
@@ -539,13 +660,17 @@ function resolveLastChance(): void {
   if (!game?.currentRound) return;
   const round = game.currentRound;
 
-  // Award 0.5 points for correct last-chance guesses
+  // Award 0.5 points per correct piece in last-chance guesses
   let anyCorrect = false;
-  for (const [name, correct] of Object.entries(round.lastChanceResults)) {
-    if (correct) {
-      game.scores[name] = (game.scores[name] ?? 0) + 0.5;
+  for (const [name, result] of Object.entries(round.lastChanceResults)) {
+    const points =
+      (result.titleCorrect ? 0.5 : 0) + (result.artistCorrect ? 0.5 : 0);
+    if (points > 0) {
+      game.scores[name] = (game.scores[name] ?? 0) + points;
       anyCorrect = true;
     }
+    if (result.titleCorrect) round.titleGuessed = true;
+    if (result.artistCorrect) round.artistGuessed = true;
   }
 
   round.phase = "revealed";
@@ -557,11 +682,23 @@ function resolveLastChance(): void {
     albumArt: round.track.albumArt,
     guess: null,
     correct: anyCorrect,
+    titleGuessedBy: round.titleGuessedBy,
+    artistGuessedBy: round.artistGuessedBy,
     lastChanceResults: Object.fromEntries(
-      Object.entries(round.lastChanceGuesses).map(([name, guess]) => [
-        name,
-        { guess, correct: round.lastChanceResults[name] ?? false },
-      ])
+      Object.entries(round.lastChanceGuesses).map(([name, guess]) => {
+        const r = round.lastChanceResults[name];
+        const points =
+          (r?.titleCorrect ? 0.5 : 0) + (r?.artistCorrect ? 0.5 : 0);
+        return [
+          name,
+          {
+            guess,
+            titleCorrect: r?.titleCorrect ?? false,
+            artistCorrect: r?.artistCorrect ?? false,
+            points,
+          },
+        ];
+      })
     ),
   });
 
@@ -697,6 +834,13 @@ export function getState(): ClientGameState {
       // Only reveal guesses/results after the round is resolved
       lastChanceGuesses: showTrack ? round.lastChanceGuesses : {},
       lastChanceResults: showTrack ? round.lastChanceResults : {},
+      titleGuessed: round.titleGuessed,
+      artistGuessed: round.artistGuessed,
+      titleGuessedBy: round.titleGuessedBy,
+      artistGuessedBy: round.artistGuessedBy,
+      feedback: round.feedback,
+      revealedName: round.titleGuessed ? round.track.name : null,
+      revealedArtists: round.artistGuessed ? round.track.artists : null,
     };
   }
 

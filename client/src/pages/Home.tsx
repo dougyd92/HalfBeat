@@ -125,6 +125,13 @@ export function Home() {
             eliminatedPlayers={gameState.round.eliminatedPlayers}
             guessDeadline={gameState.round.guessDeadline}
             lastChanceSubmitted={gameState.round.lastChanceSubmitted}
+            titleGuessed={gameState.round.titleGuessed}
+            artistGuessed={gameState.round.artistGuessed}
+            titleGuessedBy={gameState.round.titleGuessedBy}
+            artistGuessedBy={gameState.round.artistGuessedBy}
+            feedback={gameState.round.feedback}
+            revealedName={gameState.round.revealedName}
+            revealedArtists={gameState.round.revealedArtists}
           />
         </>
       )}

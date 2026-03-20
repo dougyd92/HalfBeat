@@ -5,16 +5,34 @@ interface Player {
   name: string;
 }
 
+interface GuessFeedback {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+  keepGuessing: boolean;
+}
+
+interface LastChancePlayerResult {
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+}
+
 interface RoundResult {
   trackName: string;
   artists: string[];
   albumArt: string | null;
   guess: string | null;
   correct: boolean;
+  titleGuessedBy?: string | null;
+  artistGuessedBy?: string | null;
+  lastChanceResults?: Record<
+    string,
+    { guess: string; titleCorrect: boolean; artistCorrect: boolean; points: number }
+  >;
 }
 
 interface GameState {
   status: "active" | "finished";
+  paused: boolean;
   playlistName: string;
   totalRounds: number;
   currentRoundIndex: number;
@@ -31,7 +49,14 @@ interface GameState {
     guessDeadline: number | null;
     lastChanceSubmitted: string[];
     lastChanceGuesses: Record<string, string>;
-    lastChanceResults: Record<string, boolean>;
+    lastChanceResults: Record<string, LastChancePlayerResult>;
+    titleGuessed: boolean;
+    artistGuessed: boolean;
+    titleGuessedBy: string | null;
+    artistGuessedBy: string | null;
+    feedback: GuessFeedback | null;
+    revealedName: string | null;
+    revealedArtists: string[] | null;
   } | null;
   rounds: RoundResult[];
   players: Player[];
